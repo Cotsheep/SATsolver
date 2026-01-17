@@ -9,7 +9,7 @@ private:
     int grid[9][9];
     int finalAns[9][9];
     int base[9][9];
-    int remainNum; // number of remaining WRONG cells
+    int remainWrongNum; // number of remaining WRONG cells
     
 private:
 

@@ -11,7 +11,7 @@ Sudoku::Sudoku()
 
 Sudoku::Sudoku(int _remain, bool _isM)
 {
-    remainNum = _remain;
+    remainWrongNum = 81 - _remain;
     isM = _isM;
     GenerateSudokuPuzzle(_remain, _isM);
     canBePlayed = true;
@@ -22,7 +22,7 @@ void Sudoku::Clear()
     memset(grid, 0, sizeof(grid));
     memset(finalAns, 0, sizeof(finalAns));
     memset(base, 0, sizeof(base));
-    remainNum = 0;
+    remainWrongNum = 81;
     isM = false;
     canBePlayed = false;
 }
@@ -274,7 +274,7 @@ void Sudoku::ReadPuzzle(string puzzleStr)
         for(int j = 0; j < 9; ++j)
         {
             grid[i][j] = base[i][j] = readInt(puzzleStr, p);
-            if(base[i][j] != 0) remainNum++;
+            if(base[i][j] == 0) remainWrongNum++;
         }
     for(int i = 0; i < 9; ++i)
         for(int j = 0; j < 9; ++j)
@@ -307,18 +307,27 @@ void Sudoku::Play()
     {
         printf("Input your move: ");
         var = chooseNum(0, 999);
-        if(var == 0 || (var == 1 && remainNum == 1))
+        var = (remainWrongNum == 1 && var == 1) ? 0 : var; // if no wrong number remains, hint is not allowed
+        if(var == 0)
         {
             printf("The answer:\n");
             PrintAns();
             return ;
         }
-        else if(var == 1)
+        else if(var == 1) // bug: Maybe remainNum is wrong, and it result to a hint loss
         {
             // provide a hint
-            int hintID = rand() % remainNum + 1;
+            int hintID = rand() % remainWrongNum + 1;
+
+            #ifdef DEBUG
+            printf("hintID: %d\n", hintID);
+            #endif
+
             int cnt = 0;
+            bool foundFlag = false;
             for(int i = 0; i < 9; ++i)
+            {
+                if(foundFlag) break;
                 for(int j = 0; j < 9; ++j)
                 {
                     if(!base[i][j] && grid[i][j] != finalAns[i][j]) cnt++;
@@ -328,11 +337,28 @@ void Sudoku::Play()
                         base[i][j] = finalAns[i][j];
                         grid[i][j] = finalAns[i][j];
                         PrintGame(grid, base, i + 1, j + 1);
+                        remainWrongNum--;
+
+                        foundFlag = true;
+
                         break;
                     }
                 }
+            }
+
+            
+            #ifdef DEBUG
+            if(!foundFlag)
+            {
+                printf("remain number: %d\n", remainWrongNum);
+                printf("A hint loss occured!\n");
+            }
+            #endif
+
             continue;
         }
+
+
         row = var / 100;
         col = (var / 10) % 10;
         num = var % 10;
@@ -353,8 +379,8 @@ void Sudoku::Play()
         grid[row - 1][col - 1] = num;
         bool isNowCorrect = (grid[row - 1][col - 1] == finalAns[row - 1][col - 1]);
 
-        if(isOriCorrect && !isNowCorrect) remainNum++;
-        else if(!isOriCorrect && isNowCorrect) remainNum--;
+        if(isOriCorrect && !isNowCorrect) remainWrongNum++;
+        else if(!isOriCorrect && isNowCorrect) remainWrongNum--;
 
         PrintGame(grid, base);
         winFlag = Sudoku::CheckLegal(grid, isM) == 2 ? true : false;
@@ -422,7 +448,7 @@ void Sudoku::GenerateSudokuPuzzle(int _remain, bool _isM)
     for(int i = 0; i < 9; ++i) nums[i] = i + 1;
 
     isM = _isM;
-    remainNum = _remain;
+    remainWrongNum = 81 - _remain;
     bool flag = false; // if a legal sudoku final map is generated
     int cnt = 0; // count of attempts
     
@@ -591,14 +617,14 @@ void Sudoku::SetPuzzle()
         }
         printf("Checking the current puzzle...\n");
         
-        remainNum = 0;
+        remainWrongNum = 0;
         for(int i = 0; i < 9; ++i)
             for(int j = 0; j < 9; ++j)
             {
                 base[i][j] = grid[i][j];
-                if(grid[i][j] == 0) remainNum++;
+                if(grid[i][j] == 0) remainWrongNum++;
             }
-        if(remainNum == 0)
+        if(remainWrongNum == 0)
         {
             printf("It's already a complete puzzle!\n");
             printf("Please dig at least one hole!\n");
@@ -606,7 +632,7 @@ void Sudoku::SetPuzzle()
             var = chooseNum(-1, 999);
             continue;
         }
-        else if(remainNum > 61)
+        else if(remainWrongNum > 61)
         {
             printf("Too many holes! Please ensure at least 20 numbers are given.\n");
             printf("Input your move: ");
